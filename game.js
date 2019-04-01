@@ -1,10 +1,12 @@
 let stats = {
     "population": 10,
-    "educated": 0,
+	"educated": 0,
+	"educatedProportion": 0,
     "productivity": 1,
 	"nationalProductivity": 0,
 	"peopleWealth": 0,
 	"perCapitaWealth": 0,
+	"perCapitaWealthDemand": 0.1,
     "governmentIncome": 0,
     "researchPoints": 0,
     "qualityOfLife": 0
@@ -88,27 +90,28 @@ function sliderChanged(id, value, label) {
 }
 
 function step(timestamp) {
-    if(timestamp-previousTickTime < 1000) window.requestAnimationFrame(step)
+    if(timestamp-previousTickTime < 1800) window.requestAnimationFrame(step)
     else {
-        let elapsedTicks = Math.floor((timestamp-previousTickTime)/1000)
+        let elapsedTicks = Math.floor((timestamp-previousTickTime)/1800)
         previousTickTime = timestamp
         
         // run simulation for elapsedTicks steps
         for(i=0; i<elapsedTicks; i++)
         {
-            const educatedProportion = (stats.population===0)? 0 : stats.educated/stats.population
             let incomeTaxRate = parseFloat(byId("incomeTaxRate").value)
             let researchFunding = parseFloat(byId("researchFunding").value)
             let educationFunding = parseFloat(byId("educationFunding").value)
 
-            stats.population += Math.min(stats.peopleWealth, (stats.qualityOfLife/100) * stats.population)
-            stats.educated = Math.min(stats.population, stats.educated+((educationFunding/100)*stats.population))
+            stats.population += Math.max(0, Math.min(stats.peopleWealth, (stats.qualityOfLife/100) * stats.population))
+			stats.educated = Math.min(stats.population, stats.educated+((educationFunding/100)*stats.population))
+			stats.educatedProportion = (stats.population===0) ? 0 : stats.educated/stats.population
             stats.productivity = stats.qualityOfLife
-            stats.researchPoints += researchFunding * stats.governmentIncome * Math.max(0.1, educatedProportion)
-            stats.qualityOfLife = 1 - incomeTaxRate + educatedProportion
-			stats.nationalProductivity = stats.population * stats.productivity
+            stats.researchPoints += researchFunding * stats.governmentIncome * Math.max(0.1, stats.educatedProportion)
+            stats.qualityOfLife = 1 - incomeTaxRate + stats.educatedProportion
+			stats.nationalProductivity = Math.max(0.1, stats.productivity*Math.log(stats.population))
 			stats.governmentIncome = incomeTaxRate * stats.nationalProductivity
-			stats.peopleWealth += stats.nationalProductivity - stats.governmentIncome - (0.1*stats.population) // 0.1 represents wealth demand per capita
+			stats.perCapitaWealthDemand = Math.max(0.1, 0.1*stats.qualityOfLife)
+			stats.peopleWealth += stats.nationalProductivity - stats.governmentIncome - stats.perCapitaWealthDemand
 			stats.perCapitaWealth = stats.peopleWealth / stats.population
 			
         }
